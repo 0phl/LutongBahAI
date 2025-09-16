@@ -7,6 +7,7 @@ import { RecipeGrid } from "@/components/recipe-grid"
 import { RecipeDetail } from "@/components/recipe-detail"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { RecipeCollection } from "@/components/recipe-collection"
+import { PWAInstall } from "@/components/pwa-install"
 import { storage, type UserData, type Recipe, type ChatSession } from "@/lib/storage"
 import type { AppState } from "@/lib/types"
 
@@ -192,6 +193,9 @@ export default function LutongBahAIApp() {
           }
         })()}
       </div>
+
+      {/* PWA Install Prompt - appears when installation is available */}
+      <PWAInstall />
     </div>
   )
 }

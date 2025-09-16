@@ -16,6 +16,7 @@ import {
 import { storage, type ChatSession } from "@/lib/storage"
 import { X, Plus, MessageSquare, Trash2, ChefHat } from "lucide-react"
 import { useMobile } from "@/hooks/use-mobile"
+import { PWAInstallButton } from "@/components/pwa-install"
 
 interface ChatSidebarProps {
   isOpen: boolean
@@ -196,13 +197,16 @@ export function ChatSidebar({
         </ScrollArea>
 
         {/* User Info */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
               <span className="text-sm font-medium text-primary">{userName.charAt(0).toUpperCase()}</span>
             </div>
             <span className="text-sm font-medium truncate">{userName}</span>
           </div>
+          
+          {/* PWA Install Button */}
+          <PWAInstallButton />
         </div>
       </div>
 
