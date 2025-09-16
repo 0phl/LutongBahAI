@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const payload = {
         contents: [{
             parts: [{
-              text: `A delicious, professionally photographed plate of ${recipeName}. Filipino cuisine, centered, vibrant colors, appetizing, high-resolution food photography, traditional presentation.`
+              text: `A photorealistic, authentic Filipino ${recipeName} presented on a rustic wooden platter lined with fresh green banana leaves. The dish is served in a traditional home-style arrangement, centered and naturally composed, with visible textures and rich, accurate colors. Natural daylight lighting, overhead shot, soft shadows, warm wooden table background with visible grain. High-resolution food photography, sharp focus, detailed textures, no modern garnishes or restaurant styling. Emphasize authenticity, cultural tradition, and appetizing appearance. Style: natural, rustic, traditional Filipino dining atmosphere.`
             }]
         }],
         generationConfig: {
