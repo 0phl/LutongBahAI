@@ -44,41 +44,61 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header - Mobile Optimized */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          {/* Always horizontal layout with timer in top right */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={onBack}>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Button variant="ghost" size="icon" onClick={onBack} className="flex-shrink-0">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <div>
-                <h1 className="text-lg font-bold text-foreground line-clamp-1">{recipe.title}</h1>
-                <p className="text-xs text-muted-foreground">Digital Cookbook</p>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-lg font-bold text-foreground truncate">{recipe.title}</h1>
+                <p className="text-xs text-muted-foreground">Personalized for Ronan</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsTimerOpen(!isTimerOpen)}
-                className={`gap-2 ${isTimerOpen ? "bg-green-50 border-green-600" : ""}`}
-              >
-                <Timer className="w-4 h-4" />
-                <span className="hidden sm:inline">Timer</span>
-              </Button>
+            
+            {/* Timer always in top right */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Progress Badge - Only show when there's progress */}
               {checkedSteps.size > 0 && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1 text-xs hidden sm:flex">
                   <CheckCircle2 className="w-3 h-3" />
-                  {completionPercentage}% Complete
+                  {completionPercentage}%
                 </Badge>
               )}
+              
+              {/* Enhanced Timer Button - More visible on mobile */}
+              <Button
+                variant={isTimerOpen ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsTimerOpen(!isTimerOpen)}
+                className={`gap-1.5 px-3 py-1.5 h-8 flex-shrink-0 transition-all duration-200 ${
+                  isTimerOpen 
+                    ? "bg-green-600 hover:bg-green-700 text-white shadow-sm" 
+                    : "border-muted-foreground/30 hover:border-primary hover:bg-primary/5"
+                }`}
+              >
+                <Timer className="w-3.5 h-3.5" />
+                <span className="text-xs font-medium hidden xs:inline">Timer</span>
+              </Button>
             </div>
           </div>
+          
+          {/* Progress Badge on mobile - show below header */}
+          {checkedSteps.size > 0 && (
+            <div className="flex justify-center mt-2 sm:hidden">
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <CheckCircle2 className="w-3 h-3" />
+                {completionPercentage}% Complete
+              </Badge>
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-4xl">
         {/* Recipe Hero */}
         <Card className="mb-6 overflow-hidden">
           <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border flex items-center justify-center">
@@ -99,7 +119,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
           <CardHeader>
             <CardTitle className="text-2xl text-balance">{recipe.title}</CardTitle>
             <CardDescription className="text-base text-pretty leading-relaxed">{recipe.description}</CardDescription>
-            <div className="flex items-center gap-6 pt-2">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="w-4 h-4" />
                 <span>{recipe.cookingTime}</span>
@@ -113,7 +133,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
           </CardHeader>
         </Card>
 
-        <div className="grid gap-6 lg:grid-cols-5">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-5">
           {/* Ingredients */}
           <Card className="lg:col-span-2">
             <CardHeader>

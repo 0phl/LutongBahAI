@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { storage, type Recipe, type ChatSession } from "@/lib/storage"
-import { ArrowLeft, Clock, Users, ChefHat, Sparkles, RotateCcw, Timer } from "lucide-react"
-import { CookingTimer } from "@/components/cooking-timer"
+import { ArrowLeft, Clock, Users, ChefHat, Sparkles, RotateCcw } from "lucide-react"
+import { RecipeGeneratingLoader, EnhancedLoading } from "@/components/enhanced-loading"
 
 interface RecipeGridProps {
   onRecipeSelect: (recipe: Recipe) => void
@@ -21,47 +21,87 @@ export function RecipeGrid({ onRecipeSelect, onBackToChat, userName, currentSess
   const [isGenerating, setIsGenerating] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isTimerOpen, setIsTimerOpen] = useState(false)
   const [hasGeneratedForSession, setHasGeneratedForSession] = useState<string | null>(null)
+  const [isLoadingRecipe, setIsLoadingRecipe] = useState(false)
+  
+  // Use refs to prevent race conditions and duplicate operations
+  const loadingLockRef = useRef(false)
+  const generatingLockRef = useRef(false)
+  const processedSessionRef = useRef<string | null>(null)
 
   const MAX_REGENERATIONS = 2
 
   useEffect(() => {
-    loadCurrentRecipe()
-  }, [currentSession?.id]) // Re-run when session changes
+    // Prevent multiple simultaneous loads and duplicate processing for the same session
+    const sessionId = currentSession?.id || 'no-session'
+    if (!loadingLockRef.current && processedSessionRef.current !== sessionId) {
+      processedSessionRef.current = sessionId
+      loadCurrentRecipe()
+    }
+  }, [currentSession?.id]) // Only depend on session ID to prevent infinite loops
 
   const loadCurrentRecipe = async () => {
+    // Double-check with ref-based lock to prevent race conditions
+    if (loadingLockRef.current || isLoadingRecipe) {
+      console.log("RecipeGrid: Load already in progress, skipping")
+      return
+    }
+    
+    loadingLockRef.current = true
+    setIsLoadingRecipe(true)
+    console.log("RecipeGrid: Loading recipe for session:", currentSession?.id, "Messages:", currentSession?.messages.length)
+    
     try {
       // If we have a current session, check if we've already generated a recipe for this session
       if (currentSession && currentSession.messages.length > 1) {
-        // Only generate if we haven't generated for this session yet
-        if (hasGeneratedForSession !== currentSession.id) {
+        // Check localStorage for persistent tracking to prevent duplicates across component re-mounts
+        const sessionGeneratedKey = `session-generated-${currentSession.id}`
+        const hasGeneratedPersistent = localStorage.getItem(sessionGeneratedKey)
+        
+        // Only generate if we haven't generated for this session yet (both in state and localStorage)
+        if (hasGeneratedForSession !== currentSession.id && !hasGeneratedPersistent) {
           setHasGeneratedForSession(currentSession.id)
+          localStorage.setItem(sessionGeneratedKey, 'true')
           await generateNewRecipe()
+        } else if (hasGeneratedPersistent) {
+          // If we've already generated for this session, just load the existing recipe
+          const savedRecipes = await storage.getRecipes()
+          const sessionRecipe = savedRecipes.find(recipe => 
+            recipe.createdAt && new Date(recipe.createdAt).getTime() > (currentSession.createdAt ? new Date(currentSession.createdAt).getTime() : 0)
+          )
+          if (sessionRecipe) {
+            setCurrentRecipe(sessionRecipe)
+            const storedCount = localStorage.getItem(`regeneration-${sessionRecipe.id}`)
+            setRegenerationCount(storedCount ? Number.parseInt(storedCount) : 0)
+          } else {
+            // Generate new recipe if no session-specific recipe found
+            await generateNewRecipe()
+          }
         }
       } else {
-        // Fallback: load existing recipes if no current session (e.g., accessing directly)
-        const savedRecipes = await storage.getRecipes()
-        if (savedRecipes.length === 0) {
-          // Generate initial recipe if none exist
-          await generateNewRecipe()
-        } else {
-          const latestRecipe = savedRecipes[savedRecipes.length - 1]
-          setCurrentRecipe(latestRecipe)
-          // Get regeneration count from localStorage or default to 0
-          const storedCount = localStorage.getItem(`regeneration-${latestRecipe.id}`)
-          setRegenerationCount(storedCount ? Number.parseInt(storedCount) : 0)
-        }
+        // If no current session or session has minimal messages, generate a new recipe
+        // This handles cases where user clicks "Generate Recipe" from a new chat
+        await generateNewRecipe()
       }
     } catch (error) {
       console.error("Failed to load recipe:", error)
       setError("Failed to load recipe")
     } finally {
       setIsLoading(false)
+      setIsLoadingRecipe(false)
+      loadingLockRef.current = false
     }
   }
 
   const generateNewRecipe = async (isRegeneration = false) => {
+    // Prevent duplicate generation with both state and ref checks
+    if (generatingLockRef.current || isGenerating) {
+      console.warn("Recipe generation already in progress, skipping duplicate request")
+      return
+    }
+
+    console.log("RecipeGrid: Starting recipe generation. Regeneration:", isRegeneration, "Session:", currentSession?.id)
+    generatingLockRef.current = true
     setIsGenerating(true)
     setError(null)
 
@@ -91,6 +131,7 @@ export function RecipeGrid({ onRecipeSelect, onBackToChat, userName, currentSess
       }
     } finally {
       setIsGenerating(false)
+      generatingLockRef.current = false
     }
   }
 
@@ -99,84 +140,83 @@ export function RecipeGrid({ onRecipeSelect, onBackToChat, userName, currentSess
     generateNewRecipe(true)
   }
 
+  // Reset session tracking when currentSession becomes null (new chat started)
+  useEffect(() => {
+    if (!currentSession) {
+      setHasGeneratedForSession(null)
+      processedSessionRef.current = null
+      // Clean up old session generation flags (keep only last 10)
+      cleanupOldSessionFlags()
+    }
+  }, [currentSession])
+
+  const cleanupOldSessionFlags = () => {
+    try {
+      const sessionKeys = Object.keys(localStorage).filter(key => key.startsWith('session-generated-'))
+      if (sessionKeys.length > 10) {
+        // Sort by timestamp (assuming session IDs contain timestamps) and remove oldest
+        sessionKeys.sort().slice(0, sessionKeys.length - 10).forEach(key => {
+          localStorage.removeItem(key)
+        })
+      }
+    } catch (error) {
+      console.warn("Failed to cleanup old session flags:", error)
+    }
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Loading your recipe...</p>
-        </div>
-      </div>
+      <EnhancedLoading
+        message="Loading your recipe..."
+        size="md"
+      />
     )
   }
 
   if (isGenerating) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-            <Sparkles className="w-8 h-8 text-primary animate-pulse" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">
-              {regenerationCount > 0 ? "Regenerating Your Recipe" : "Generating Your Recipe"}
-            </h2>
-            <p className="text-sm text-muted-foreground text-pretty">
-              I'm creating a personalized Filipino recipe based on our conversation...
-            </p>
-          </div>
-          <div className="w-full bg-muted rounded-full h-2">
-            <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: "60%" }}></div>
-          </div>
-        </div>
-      </div>
+      <RecipeGeneratingLoader />
     )
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header - Mobile Optimized */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          {/* Mobile: Stack layout, Desktop: Side by side */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={onBackToChat}>
+              <Button variant="ghost" size="icon" onClick={onBackToChat} className="flex-shrink-0">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Your Recipe</h1>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-xl font-bold text-foreground truncate">Your Recipe</h1>
                 <p className="text-xs text-muted-foreground">Personalized for {userName}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsTimerOpen(!isTimerOpen)}
-                className={`gap-2 ${isTimerOpen ? "bg-green-50 border-green-600" : ""}`}
-              >
-                <Timer className="w-4 h-4" />
-                <span className="hidden sm:inline">Timer</span>
-              </Button>
-              {regenerationCount < MAX_REGENERATIONS && currentRecipe && (
+            
+            {/* Actions - Only Regenerate button */}
+            {regenerationCount < MAX_REGENERATIONS && currentRecipe && (
+              <div className="flex justify-center sm:justify-end">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleRegenerate}
                   disabled={isGenerating}
-                  className="gap-2 bg-transparent"
+                  className="gap-2 bg-transparent w-full sm:w-auto"
                 >
                   <RotateCcw className="w-4 h-4" />
                   Regenerate ({MAX_REGENERATIONS - regenerationCount} left)
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
       {/* Recipe Display */}
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-4xl">
         {error ? (
           <div className="text-center py-12">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -260,16 +300,34 @@ export function RecipeGrid({ onRecipeSelect, onBackToChat, userName, currentSess
           </div>
         )}
       </main>
-
-      <CookingTimer isOpen={isTimerOpen} onClose={() => setIsTimerOpen(false)} />
     </div>
   )
 }
 
 async function generateRecipeFromChat(userName: string, currentSession: ChatSession | null, regenerationCount = 0): Promise<Recipe> {
   try {
-    // Get chat history for context - use current session messages if available, fallback to storage
-    const chatHistory = currentSession?.messages || await storage.getChatHistory()
+    // Get chat history for context - prioritize current session messages
+    let chatHistory = currentSession?.messages || []
+    
+    // If no current session messages, this might be an error state
+    // Log this for debugging and provide a fallback
+    if (chatHistory.length === 0) {
+      console.warn("No current session messages found for recipe generation. This might indicate a session management issue.")
+      
+      // Try to get the most recent chat sessions to find recent conversation
+      const sessions = await storage.getChatSessions()
+      if (sessions.length > 0) {
+        // Use the most recent session's messages
+        const mostRecentSession = sessions[0] // Sessions are ordered by updatedAt desc
+        chatHistory = mostRecentSession.messages
+        console.log("Using most recent session messages as fallback:", mostRecentSession.id)
+      } else {
+        // Last resort: use old chat history storage
+        const allChatHistory = await storage.getChatHistory()
+        chatHistory = allChatHistory.slice(-10) // Get last 10 messages
+        console.log("Using legacy chat history as fallback")
+      }
+    }
 
     // Generate recipe first
     const recipeResponse = await fetch("/api/recipes/generate", {
@@ -310,7 +368,7 @@ async function generateRecipeFromChat(userName: string, currentSession: ChatSess
     const imageData = await imagePromise
 
     const recipe: Recipe = {
-      id: recipeData.recipe.id,
+      id: `${recipeData.recipe.id}-${Date.now()}`, // Ensure unique ID by adding timestamp
       title: recipeData.recipe.name,
       description: recipeData.recipe.description,
       ingredients: recipeData.recipe.ingredients,
