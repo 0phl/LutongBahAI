@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { storage, type ChatMessage, type ChatSession } from "@/lib/storage"
-import { Send, ChefHat, Sparkles, Menu } from "lucide-react"
+import { Send, ChefHat, Sparkles, Menu, Eye } from "lucide-react"
 
 interface ChatInterfaceProps {
   userName: string
@@ -34,6 +34,7 @@ export function ChatInterface({
   const [inputValue, setInputValue] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showGenerateButton, setShowGenerateButton] = useState(false)
+  const [hasGeneratedRecipe, setHasGeneratedRecipe] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [characterCount, setCharacterCount] = useState(0)
   const MAX_CHARACTERS = 1000
@@ -45,18 +46,24 @@ export function ChatInterface({
           setMessages(currentSession.messages)
           const hasEnoughContext = currentSession.messages.length >= 4
           setShowGenerateButton(hasEnoughContext)
+          
+          // Check if recipe was already generated for this session
+          const sessionGeneratedKey = `session-generated-${currentSession.id}`
+          const hasGenerated = localStorage.getItem(sessionGeneratedKey) === 'true'
+          setHasGeneratedRecipe(hasGenerated)
         } else {
           // Only show welcome message without creating a session
           // Session will be created when user sends their first message
           const welcomeMessage: ChatMessage = {
             id: "welcome",
             role: "assistant",
-            content: `Hi ${userName}! I'm your Filipino recipe assistant. Tell me what ingredients you have, what you're craving, or any dietary preferences, and I'll help you discover the perfect Filipino dish to cook today!`,
+            content: `Kamusta, ${userName}! I'm your Filipino recipe buddy. Sabihin mo lang kung anong ingredients meron ka, ano ang crave mo, at kung may dietary prefs (halal, vegetarian, less salt, etc.). Tutulungan kitang pumili ng swak na Pinoy ulam o merienda na kayang-kaya lutuin today!`,
             timestamp: new Date().toISOString(),
           }
           setMessages([welcomeMessage])
           // Ensure CTA from previous session does not persist
           setShowGenerateButton(false)
+          setHasGeneratedRecipe(false)
         }
       } catch (error) {
         console.error("Failed to load chat history:", error)
@@ -189,7 +196,7 @@ export function ChatInterface({
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         role: "assistant",
-        content: "Sorry, I'm having trouble responding right now. Please try again!",
+        content: "Whoops! My recipe brain is reloading 🧠 Try again in a few seconds — I'll be right back with something delicious!",
         timestamp: new Date().toISOString(),
       }
       const finalMessages = [...newMessages, errorMessage]
@@ -216,6 +223,10 @@ export function ChatInterface({
   }
 
   const handleGenerateRecipe = () => {
+    setHasGeneratedRecipe(true)
+    if (currentSession) {
+      localStorage.setItem(`session-generated-${currentSession.id}`, 'true')
+    }
     onRecipeGenerated()
   }
 
@@ -226,20 +237,23 @@ export function ChatInterface({
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={onSidebarToggle} className="h-8 w-8 p-0 md:flex">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={onSidebarToggle} className="h-8 w-8 p-0">
                 <Menu className="w-4 h-4" />
               </Button>
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <ChefHat className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Lutong BahAI Chat</h1>
-                <p className="text-xs text-muted-foreground">
-                  {currentSession?.title === "New Chat"
-                    ? `Chatting with ${userName}`
-                    : currentSession?.title || `Chatting with ${userName}`}
-                </p>
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/txtlogo.svg" 
+                  alt="Lutong BahAI" 
+                  className="h-12 w-auto"
+                />
+                <div className="hidden sm:block">
+                  <p className="text-xs text-muted-foreground">
+                    {currentSession?.title === "New Chat"
+                      ? `Chatting with ${userName}`
+                      : currentSession?.title || `Chatting with ${userName}`}
+                  </p>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -266,31 +280,74 @@ export function ChatInterface({
       <div className="flex-1 container mx-auto px-4 py-6 max-w-4xl">
         <div className="space-y-4">
           {messages.map((message) => (
-            <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                  message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}
-              >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                <p className="text-xs opacity-70 mt-2">{new Date(message.timestamp).toLocaleTimeString()}</p>
+            <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} gap-3`}>
+              {message.role === "assistant" && (
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center overflow-hidden">
+                    <img 
+                      src="/char-profile.svg" 
+                      alt="AI Assistant" 
+                      className="w-10 h-10 object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-col max-w-[80%]">
+                {message.role === "assistant" && (
+                  <div className="mb-1">
+                    <span className="text-xs font-medium text-primary">Lutong BahAI</span>
+                    <span className="text-xs text-muted-foreground ml-2">Filipino Recipe Assistant</span>
+                  </div>
+                )}
+                <div
+                  className={`rounded-lg px-4 py-3 ${
+                    message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  <p className="text-xs opacity-70 mt-2">{new Date(message.timestamp).toLocaleTimeString()}</p>
+                </div>
               </div>
+              {message.role === "user" && (
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-muted border-2 border-border flex items-center justify-center">
+                    <span className="text-base font-medium text-muted-foreground">
+                      {userName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
 
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-muted rounded-lg px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                  <div
-                    className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                    style={{ animationDelay: "0.1s" }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                    style={{ animationDelay: "0.2s" }}
-                  ></div>
+            <div className="flex justify-start gap-3">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center overflow-hidden">
+                  <img 
+                    src="/char-profile.svg" 
+                    alt="AI Assistant" 
+                    className="w-10 h-10 object-cover"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <div className="mb-1">
+                  <span className="text-xs font-medium text-primary">Lutong BahAI</span>
+                  <span className="text-xs text-muted-foreground ml-2">Filipino Recipe Assistant</span>
+                </div>
+                <div className="bg-muted rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                    <div
+                      className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                      style={{ animationDelay: "0.1s" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                      style={{ animationDelay: "0.2s" }}
+                    ></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -301,21 +358,63 @@ export function ChatInterface({
       </div>
 
       {showGenerateButton && (
-        <div className="container mx-auto px-4 pb-4 max-w-4xl">
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+        <div className="container mx-auto px-3 sm:px-4 pb-4 max-w-4xl">
+          <Card className={`border-primary/20 transition-all duration-500 ${hasGeneratedRecipe ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' : 'bg-primary/5'}`}>
+            <CardContent className="p-3 sm:p-4">
+              {/* Mobile-first layout: Stack on mobile, side-by-side on larger screens */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="font-medium text-sm">Ready to cook?</p>
-                    <p className="text-xs text-muted-foreground">Generate your personalized Filipino recipe</p>
+                  <Sparkles className={`w-5 h-5 flex-shrink-0 ${hasGeneratedRecipe ? 'text-green-600' : 'text-primary'}`} />
+                  <div className="min-w-0 flex-1">
+                    {hasGeneratedRecipe ? (
+                      <>
+                        <p className="font-medium text-sm text-green-800 dark:text-green-200">Recipe Generated!</p>
+                        <p className="text-xs text-green-600 dark:text-green-300 mt-0.5">Your recipe is ready. Start a new chat for another recipe.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium text-sm">Ready to cook?</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Generate your personalized Filipino recipe</p>
+                      </>
+                    )}
                   </div>
                 </div>
-                <Button onClick={handleGenerateRecipe} className="gap-2">
-                  <ChefHat className="w-4 h-4" />
-                  Generate Recipe
-                </Button>
+                
+                {/* Mobile: Full width buttons stacked, Desktop: Side by side */}
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  {hasGeneratedRecipe ? (
+                    <>
+                      <Button 
+                        onClick={onRecipeGenerated}
+                        variant="outline"
+                        className="gap-2 w-full sm:w-auto order-2 sm:order-1"
+                        size="sm"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Recipe
+                      </Button>
+                      <Button 
+                        onClick={handleGenerateRecipe} 
+                        disabled={true}
+                        className="gap-2 transition-all duration-300 w-full sm:w-auto order-1 sm:order-2"
+                        variant="secondary"
+                        size="sm"
+                      >
+                        <ChefHat className="w-4 h-4" />
+                        Recipe Generated
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      onClick={handleGenerateRecipe} 
+                      className="gap-2 transition-all duration-300 w-full sm:w-auto"
+                      size="sm"
+                    >
+                      <ChefHat className="w-4 h-4" />
+                      Generate Recipe
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -323,14 +422,14 @@ export function ChatInterface({
       )}
 
       <div className="border-t border-border bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 max-w-4xl">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 max-w-4xl">
           <div className="space-y-2">
             <div className="flex justify-end items-center text-xs text-muted-foreground">
               <span className={characterCount > MAX_CHARACTERS * 0.9 ? "text-orange-500" : ""}>
                 {characterCount}/{MAX_CHARACTERS}
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 sm:gap-3">
               <Textarea
                 placeholder="Describe what you want to cook"
                 value={inputValue}
@@ -386,7 +485,7 @@ async function generateAIResponse(
   } catch (error) {
     console.error("AI response error:", error)
     return {
-      content: "Sorry, I'm having trouble responding right now. Please try again!",
+      content: "Whoops! My recipe brain is reloading 🧠 Try again in a few seconds — I'll be right back with something delicious!",
       shouldShowGenerateButton: false,
     }
   }
