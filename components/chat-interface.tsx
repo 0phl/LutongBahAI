@@ -57,7 +57,7 @@ export function ChatInterface({
           const welcomeMessage: ChatMessage = {
             id: "welcome",
             role: "assistant",
-            content: `Kamusta, ${userName}! I'm your Filipino recipe buddy. Sabihin mo lang kung anong ingredients meron ka, ano ang crave mo, at kung may dietary prefs (halal, vegetarian, less salt, etc.). Tutulungan kitang pumili ng swak na Pinoy ulam o merienda na kayang-kaya lutuin today!`,
+            content: `Kamusta, ${userName}! I'm your Filipino recipe buddy. Sabihin mo lang kung anong ingredients meron ka, ano ang cravings mo, at kung may dietary prefs (halal, vegetarian, less salt, etc.). Tutulungan kitang pumili ng swak na Pinoy ulam o merienda na kayang-kaya lutuin today!`,
             timestamp: new Date().toISOString(),
           }
           setMessages([welcomeMessage])
