@@ -54,7 +54,7 @@ Lutong BahAI is an AI-powered Filipino recipe assistant that provides a personal
 ### **AI Integration**
 - **Google Generative AI (Gemini)** - Conversational AI and recipe generation
   - Gemini 2.0 Flash for chat responses
-  - Gemini 2.5 Flash Image Preview for recipe image generation
+  - Gemini 2.0 Flash Preview Image Generation for recipe image generation
 - **Custom AI prompts** for authentic Filipino cuisine knowledge
 
 ### **Data Storage**

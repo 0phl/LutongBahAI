@@ -325,15 +325,14 @@ export function ChatInterface({
       <div className="border-t border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 max-w-4xl">
           <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs text-muted-foreground">
-              <span>Tell me about your ingredients, cravings, or preferences...</span>
+            <div className="flex justify-end items-center text-xs text-muted-foreground">
               <span className={characterCount > MAX_CHARACTERS * 0.9 ? "text-orange-500" : ""}>
                 {characterCount}/{MAX_CHARACTERS}
               </span>
             </div>
             <div className="flex gap-2">
               <Textarea
-                placeholder="Describe what you want to cook, ingredients you have, or any dietary preferences..."
+                placeholder="Describe what you want to cook"
                 value={inputValue}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyPress}

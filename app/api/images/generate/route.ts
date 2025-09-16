@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "API key not configured" }, { status: 500 });
     }
     
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`;
     
     const payload = {
         contents: [{
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
             }]
         }],
         generationConfig: {
-            responseModalities: ['IMAGE']
+            responseModalities: ["TEXT", "IMAGE"]
         },
     };
 

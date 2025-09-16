@@ -22,6 +22,7 @@ export function RecipeGrid({ onRecipeSelect, onBackToChat, userName, currentSess
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isTimerOpen, setIsTimerOpen] = useState(false)
+  const [hasGeneratedForSession, setHasGeneratedForSession] = useState<string | null>(null)
 
   const MAX_REGENERATIONS = 2
 
@@ -31,9 +32,13 @@ export function RecipeGrid({ onRecipeSelect, onBackToChat, userName, currentSess
 
   const loadCurrentRecipe = async () => {
     try {
-      // If we have a current session, always generate a fresh recipe based on the conversation
+      // If we have a current session, check if we've already generated a recipe for this session
       if (currentSession && currentSession.messages.length > 1) {
-        await generateNewRecipe()
+        // Only generate if we haven't generated for this session yet
+        if (hasGeneratedForSession !== currentSession.id) {
+          setHasGeneratedForSession(currentSession.id)
+          await generateNewRecipe()
+        }
       } else {
         // Fallback: load existing recipes if no current session (e.g., accessing directly)
         const savedRecipes = await storage.getRecipes()
@@ -90,6 +95,7 @@ export function RecipeGrid({ onRecipeSelect, onBackToChat, userName, currentSess
   }
 
   const handleRegenerate = () => {
+    // Allow regeneration by not changing the session flag
     generateNewRecipe(true)
   }
 
