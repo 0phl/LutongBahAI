@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     console.error("💥 [IMAGE GEN] Fatal error:", error);
     console.error("💥 [IMAGE GEN] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
 
-    const fallbackUrl = `/placeholder.svg?height=300&width=400&query=${encodeURIComponent(`Filipino dish ${recipeName} photography`)}`;
+    const fallbackUrl = `/food-placeholder.png`;
     
     console.log("🔄 [IMAGE GEN] Falling back to placeholder:", fallbackUrl);
     

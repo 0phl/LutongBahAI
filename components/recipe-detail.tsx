@@ -104,7 +104,7 @@ export function RecipeDetail({ recipe, onBack }: RecipeDetailProps) {
           <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border flex items-center justify-center">
             {recipe.imageUrl ? (
               <img
-                src={recipe.imageUrl || "/placeholder.svg"}
+                src={recipe.imageUrl || "/food-placeholder.png"}
                 alt={recipe.title}
                 className="w-full h-full object-cover"
               />

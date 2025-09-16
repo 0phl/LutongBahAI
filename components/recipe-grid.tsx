@@ -242,7 +242,7 @@ export function RecipeGrid({ onRecipeSelect, onBackToChat, userName, currentSess
               <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border flex items-center justify-center">
                 {currentRecipe.imageUrl ? (
                   <img
-                    src={currentRecipe.imageUrl || "/placeholder.svg"}
+                    src={currentRecipe.imageUrl || "/food-placeholder.png"}
                     alt={currentRecipe.title}
                     className="w-full h-full object-cover"
                   />
@@ -361,7 +361,7 @@ async function generateRecipeFromChat(userName: string, currentSession: ChatSess
       }),
     }).then(response => response.json()).catch(error => {
       console.warn("Image generation failed:", error)
-      return { imageUrl: "/placeholder.svg" } // Fallback
+      return { imageUrl: "/food-placeholder.png" } // Fallback
     })
 
     // Wait for image generation to complete
