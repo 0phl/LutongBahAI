@@ -1,6 +1,5 @@
 <div align="center">
 
-![Character Logo](./public/character-logo.svg)
 ![Lutong BahAI Logo](./public/txtlogo.svg)
 
 </div>
